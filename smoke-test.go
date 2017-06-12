@@ -102,11 +102,12 @@ func testCreateMetric(value float64) {
 }
 
 func testWebhookTrigger() {
-	for i := 0; i < 5; i++ {
+	// Wait 5 minutes for webhook to trigger
+	for i := 0; i < 20; i++ {
 		if webhookTriggered {
 			fmt.Println("SUCCESS")
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(15 * time.Second)
 	}
 	fmt.Println("FAILED - Did not recieve webhook")
 }
@@ -155,7 +156,7 @@ func main() {
 	testMeasurementsFlowing()
 
 	// Set Up Webhook server for notifications
-	webhookIP := os.Getenv("WEBOOK_IP")
+	webhookIP := os.Getenv("WEBHOOK_IP")
 	if webhookIP == "" {
 		fmt.Println("Using localhost for webook IP")
 	}
