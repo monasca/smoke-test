@@ -155,8 +155,13 @@ func main() {
 	testMeasurementsFlowing()
 
 	// Set Up Webhook server for notifications
+	webhookIP := os.Getenv("WEBOOK_IP")
+	if webhookIP == "" {
+		fmt.Println("Using localhost for webook IP")
+	}
+	fmt.Println(webhookIP + ":8080")
 	http.HandleFunc("/", handleWebhook)
-	go http.ListenAndServe(":8080", nil)
+	go http.ListenAndServe(webhookIP + ":8080", nil)
 
 	fmt.Println("TEST NOTIFICATION CREATION")
 	notificationID := testCreateNotification("http://127.0.0.1:3455")
