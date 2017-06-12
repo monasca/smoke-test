@@ -116,6 +116,7 @@ func testWebhookTrigger() {
 		if webhookTriggered {
 			fmt.Println("SUCCESS")
 			testsSucceeded++
+			return
 		}
 		time.Sleep(15 * time.Second)
 	}
