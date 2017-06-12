@@ -180,7 +180,7 @@ func main() {
 	}
 	webhookAddress := "http://" + webhookIP + ":8080"
 	http.HandleFunc("/", handleWebhook)
-	go http.ListenAndServe(webhookAddress, nil)
+	go http.ListenAndServe(":8080", nil)
 
 	fmt.Println("TEST NOTIFICATION CREATION")
 	notificationID := testCreateNotification(webhookAddress)
