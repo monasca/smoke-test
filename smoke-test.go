@@ -131,6 +131,9 @@ func main() {
 	// Initialize keystone client and get Monasca endpoint
 	keystoneOpts, err := openstack.AuthOptionsFromEnv()
 
+	testsRun := 0
+	testsSucceeded := 0
+
 	if err != nil {
 		fmt.Printf("ERROR setting up keystone client - %s", err.Error())
 		os.Exit(1)
@@ -154,6 +157,7 @@ func main() {
 
 	fmt.Println("TEST MEASUREMENTS FLOWING")
 	testMeasurementsFlowing()
+	testsRun++
 
 	// Set Up Webhook server for notifications
 	webhookIP := os.Getenv("WEBHOOK_IP")
@@ -176,8 +180,6 @@ func main() {
 
 	fmt.Println("TEST WEBHOOK TRIGGERED")
 	testWebhookTrigger()
-
-	fmt
 
 	cleanup(alarmDefinitionID, notificationID)
 }
