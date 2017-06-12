@@ -15,16 +15,16 @@
 package main
 
 import (
-	"io"
-	"net/http"
-	"time"
-	"github.com/gophercloud/gophercloud/openstack"
-	"os"
 	"fmt"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/monasca/golang-monascaclient/monascaclient"
-	"strconv"
 	"github.com/monasca/golang-monascaclient/monascaclient/models"
+	"io"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
 
 var webhookTriggered bool = false
@@ -44,7 +44,7 @@ func getToken(authOptions *gophercloud.AuthOptions) (string, error) {
 	return openstackProvider.TokenID, nil
 }
 
-func initializeMonascaClient(token, monascaURL string)(){
+func initializeMonascaClient(token, monascaURL string) {
 	timeoutSetting := os.Getenv("TIMEOUT")
 	var timeout int
 	if timeoutSetting == "" {
@@ -63,13 +63,13 @@ func initializeMonascaClient(token, monascaURL string)(){
 	monascaclient.SetHeaders(headers)
 }
 
-func testMeasurementsFlowing(){
+func testMeasurementsFlowing() {
 	//mergeMetrics := false
 	metricName := "pod.cpu.total_time_sec"
 	startTime := time.Now()
 	startTime = startTime.Add(-3 * time.Minute)
 	groupBy := "*"
-	measurementQuery := models.MeasurementQuery{Name:&metricName, StartTime:&startTime, GroupBy:&groupBy}
+	measurementQuery := models.MeasurementQuery{Name: &metricName, StartTime: &startTime, GroupBy: &groupBy}
 	measurements, err := monascaclient.GetMeasurements(&measurementQuery)
 	if err != nil {
 		fmt.Printf("FAILED - Error getting measurements from API test failed %s\n", err.Error())
@@ -86,7 +86,7 @@ func testMeasurementsFlowing(){
 func testCreateNotification(webhookAddress string) string {
 	name := "smoke_test_notification"
 	notificationType := "webhook"
-	requestBody := models.NotificationRequestBody{Name:&name, Type:&notificationType, Address:&webhookAddress}
+	requestBody := models.NotificationRequestBody{Name: &name, Type: &notificationType, Address: &webhookAddress}
 	notificationResponse, err := monascaclient.CreateNotificationMethod(&requestBody)
 	if err != nil {
 		fmt.Printf("FAILED - Error creating notification method %s\n", err.Error())
@@ -101,7 +101,7 @@ func testCreateAlarmDefinition(notificationID string) string {
 	name := "smoke_test_alarm"
 	expression := "smoke_test_metric>0"
 	alarmDefActions := []string{notificationID}
-	requestBody := models.AlarmDefinitionRequestBody{Name:&name, Expression:&expression, AlarmActions:&alarmDefActions, UndeterminedActions:&alarmDefActions, OkActions:&alarmDefActions}
+	requestBody := models.AlarmDefinitionRequestBody{Name: &name, Expression: &expression, AlarmActions: &alarmDefActions, UndeterminedActions: &alarmDefActions, OkActions: &alarmDefActions}
 	alarmDefinitionResponse, err := monascaclient.CreateAlarmDefinition(&requestBody)
 	if err != nil {
 		fmt.Printf("FAILED - Error creating alarm definition %s\n", err.Error())
@@ -115,7 +115,7 @@ func testCreateAlarmDefinition(notificationID string) string {
 func testCreateMetric(value float64) {
 	now := time.Now().Round(time.Millisecond).UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 	name := "smoke_test_metric"
-	err := monascaclient.CreateMetric(nil, &models.MetricRequestBody{Name:&name, Value:&value, Timestamp:&now})
+	err := monascaclient.CreateMetric(nil, &models.MetricRequestBody{Name: &name, Value: &value, Timestamp: &now})
 	if err != nil {
 		fmt.Printf("FAILED - Error creating metric %s\n", err.Error())
 		return
@@ -139,7 +139,7 @@ func testWebhookTrigger() {
 
 func cleanup(alarmDefinitionID, notificationID string) {
 	cleanupStatus := true
-	if alarmDefinitionID != ""{
+	if alarmDefinitionID != "" {
 		err := monascaclient.DeleteAlarmDefinition(alarmDefinitionID)
 		if err != nil {
 			fmt.Printf("FAILED - Error alarm definition - %s\n", err.Error())
@@ -220,7 +220,7 @@ func main() {
 	if testsSucceeded != totalTests {
 		fmt.Printf("Smoke Tests Failed. %d/%d passed\n", testsSucceeded, totalTests)
 		os.Exit(1)
-	} else{
+	} else {
 		fmt.Println("All smoke tests passed successfully!!!")
 	}
 }
