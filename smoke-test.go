@@ -159,13 +159,14 @@ func main() {
 	webhookIP := os.Getenv("WEBHOOK_IP")
 	if webhookIP == "" {
 		fmt.Println("Using localhost for webook IP")
+		webhookIP = "127.0.0.1"
 	}
-	fmt.Println(webhookIP + ":8080")
+	webhookAddress := webhookIP + ":8080"
 	http.HandleFunc("/", handleWebhook)
-	go http.ListenAndServe(webhookIP + ":8080", nil)
+	go http.ListenAndServe(webhookAddress, nil)
 
 	fmt.Println("TEST NOTIFICATION CREATION")
-	notificationID := testCreateNotification("http://127.0.0.1:3455")
+	notificationID := testCreateNotification(webhookAddress)
 
 	fmt.Println("TEST ALARM DEFINITION CREATION")
 	alarmDefinitionID := testCreateAlarmDefinition(notificationID)
@@ -175,6 +176,8 @@ func main() {
 
 	fmt.Println("TEST WEBHOOK TRIGGERED")
 	testWebhookTrigger()
+
+	fmt
 
 	cleanup(alarmDefinitionID, notificationID)
 }
