@@ -14,6 +14,8 @@ import (
 )
 
 var webhookTriggered bool = false
+var testsSucceeded int = 0
+var totalTests int = 6
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Received WEBHOOK")
@@ -57,14 +59,17 @@ func testMeasurementsFlowing(){
 	measurements, err := monascaclient.GetMeasurements(&measurementQuery)
 	if err != nil {
 		fmt.Printf("FAILED - Error getting measurements from API test failed %s\n", err.Error())
+		return
 	}
 	if len(measurements.Elements) == 0 {
 		fmt.Println("FAILED - No current measurements found for pod.cpu.total_time_sec")
+		return
 	}
 	fmt.Println("SUCCESS")
+	testsSucceeded++
 }
 
-func testCreateNotification(webhookAddress string) string{
+func testCreateNotification(webhookAddress string) string {
 	name := "smoke_test_notification"
 	notificationType := "webhook"
 	requestBody := models.NotificationRequestBody{Name:&name, Type:&notificationType, Address:&webhookAddress}
@@ -74,10 +79,11 @@ func testCreateNotification(webhookAddress string) string{
 		return ""
 	}
 	fmt.Println("SUCCESS")
+	testsSucceeded++
 	return notificationResponse.ID
 }
 
-func testCreateAlarmDefinition(notificationID string) string{
+func testCreateAlarmDefinition(notificationID string) string {
 	name := "smoke_test_alarm"
 	expression := "smoke_test_metric>0"
 	alarmDefActions := []string{notificationID}
@@ -88,6 +94,7 @@ func testCreateAlarmDefinition(notificationID string) string{
 		return ""
 	}
 	fmt.Println("SUCCESS")
+	testsSucceeded++
 	return alarmDefinitionResponse.ID
 }
 
@@ -97,8 +104,10 @@ func testCreateMetric(value float64) {
 	err := monascaclient.CreateMetric(nil, &models.MetricRequestBody{Name:&name, Value:&value, Timestamp:&now})
 	if err != nil {
 		fmt.Printf("FAILED - Error creating metric %s\n", err.Error())
+		return
 	}
 	fmt.Println("SUCCESS")
+	testsSucceeded++
 }
 
 func testWebhookTrigger() {
@@ -106,6 +115,7 @@ func testWebhookTrigger() {
 	for i := 0; i < 20; i++ {
 		if webhookTriggered {
 			fmt.Println("SUCCESS")
+			testsSucceeded++
 		}
 		time.Sleep(15 * time.Second)
 	}
@@ -113,26 +123,30 @@ func testWebhookTrigger() {
 }
 
 func cleanup(alarmDefinitionID, notificationID string) {
+	cleanupStatus := true
 	if alarmDefinitionID != ""{
 		err := monascaclient.DeleteAlarmDefinition(alarmDefinitionID)
 		if err != nil {
-			fmt.Println("ERROR deleting alarm definition - %s", err.Error())
+			fmt.Printf("FAILED - Error alarm definition - %s\n", err.Error())
+			cleanupStatus = false
 		}
 	}
 	if notificationID != "" {
 		err := monascaclient.DeleteNotificationMethod(notificationID)
 		if err != nil {
-			fmt.Println("ERROR deleting alarm definition - %s", err.Error())
+			fmt.Printf("FAILED - Error deleting alarm definition - %s\n", err.Error())
+			cleanupStatus = false
 		}
+	}
+	if cleanupStatus {
+		testsSucceeded++
+		fmt.Println("SUCCESS")
 	}
 }
 
 func main() {
 	// Initialize keystone client and get Monasca endpoint
 	keystoneOpts, err := openstack.AuthOptionsFromEnv()
-
-	testsRun := 0
-	testsSucceeded := 0
 
 	if err != nil {
 		fmt.Printf("ERROR setting up keystone client - %s", err.Error())
@@ -157,29 +171,41 @@ func main() {
 
 	fmt.Println("TEST MEASUREMENTS FLOWING")
 	testMeasurementsFlowing()
-	testsRun++
+	fmt.Println()
 
 	// Set Up Webhook server for notifications
 	webhookIP := os.Getenv("WEBHOOK_IP")
 	if webhookIP == "" {
-		fmt.Println("Using localhost for webook IP")
 		webhookIP = "127.0.0.1"
 	}
-	webhookAddress := webhookIP + ":8080"
+	webhookAddress := "http://" + webhookIP + ":8080"
 	http.HandleFunc("/", handleWebhook)
 	go http.ListenAndServe(webhookAddress, nil)
 
 	fmt.Println("TEST NOTIFICATION CREATION")
 	notificationID := testCreateNotification(webhookAddress)
+	fmt.Println()
 
 	fmt.Println("TEST ALARM DEFINITION CREATION")
 	alarmDefinitionID := testCreateAlarmDefinition(notificationID)
+	fmt.Println()
 
 	fmt.Println("TEST METRIC CREATION")
 	testCreateMetric(1)
+	fmt.Println()
 
 	fmt.Println("TEST WEBHOOK TRIGGERED")
 	testWebhookTrigger()
+	fmt.Println()
 
+	fmt.Println("TEST CLEANUP")
 	cleanup(alarmDefinitionID, notificationID)
+	fmt.Println()
+
+	if testsSucceeded != totalTests {
+		fmt.Printf("Smoke Tests Failed. %d/%d passed\n", testsSucceeded, totalTests)
+		os.Exit(1)
+	} else{
+		fmt.Println("All smoke tests passed successfully!!!")
+	}
 }
