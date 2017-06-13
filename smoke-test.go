@@ -127,13 +127,13 @@ func testCreateMetric(value float64) {
 
 func testWebhookTrigger() {
 	// Wait 5 minutes for webhook to trigger
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 10; i++ {
 		if webhookTriggered {
 			fmt.Println("SUCCESS")
 			testsSucceeded++
 			return
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 	fmt.Println("FAILED - Did not recieve webhook")
 }
