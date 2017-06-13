@@ -29,7 +29,6 @@ import (
 
 var webhookTriggered bool = false
 var testsSucceeded int = 0
-var totalTests int = 6
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Received WEBHOOK")
@@ -53,6 +52,8 @@ func initializeMonascaClient(token, monascaURL string) {
 		var err error
 		timeout, err = strconv.Atoi(timeoutSetting)
 		if err != nil {
+			fmt.Printf("Error converting TIMEOUT environment varible to int -  %s. Defaulting "+
+				"timeout to 5 seconds", err.Error())
 			timeout = 5
 		}
 	}
@@ -126,13 +127,13 @@ func testCreateMetric(value float64) {
 
 func testWebhookTrigger() {
 	// Wait 5 minutes for webhook to trigger
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 60; i++ {
 		if webhookTriggered {
 			fmt.Println("SUCCESS")
 			testsSucceeded++
 			return
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("FAILED - Did not recieve webhook")
 }
@@ -159,9 +160,52 @@ func cleanup(alarmDefinitionID, notificationID string) {
 	}
 }
 
+func cleanupPreviousRun() {
+	notificationName := "smoke_test_notification"
+	// Get notification method
+	notificationMethods, err := monascaclient.GetNotificationMethods(&models.NotificationQuery{})
+	if err != nil {
+		fmt.Printf("Error getting notification methods to delete potential left over notification method "+
+			"from previous runs - %s\n", err.Error())
+	} else {
+		notificationID := ""
+		for _, notificationMethod := range notificationMethods.Elements {
+			if notificationMethod.Name == notificationName {
+				notificationID = notificationMethod.ID
+			}
+		}
+		if notificationID != "" {
+			err := monascaclient.DeleteNotificationMethod(notificationID)
+			if err != nil {
+				fmt.Printf("Error deleting notification method - %s\n", err.Error())
+			}
+		}
+	}
+	alarmDefinitionName := "smoke_test_alarm"
+	alarmDefinitions, err := monascaclient.GetAlarmDefinitions(&models.AlarmDefinitionQuery{Name: &alarmDefinitionName})
+	if err != nil {
+		fmt.Printf("Error getting alarm definitions to delete potential left over alarm definition "+
+			"from previous runs - %s\n", err.Error())
+	} else {
+		alarmDefinitionID := ""
+		for _, alarmDefinition := range alarmDefinitions.Elements {
+			if alarmDefinition.Name == alarmDefinitionName {
+				alarmDefinitionID = alarmDefinition.ID
+			}
+		}
+		if alarmDefinitionID != "" {
+			err := monascaclient.DeleteAlarmDefinition(alarmDefinitionID)
+			if err != nil {
+				fmt.Printf("Error deleting alarm definition - %s\n", err.Error())
+			}
+		}
+	}
+}
+
 func main() {
 	// Initialize keystone client and get Monasca endpoint
 	keystoneOpts, err := openstack.AuthOptionsFromEnv()
+	testsRun := 0
 
 	if err != nil {
 		fmt.Printf("ERROR setting up keystone client - %s", err.Error())
@@ -184,9 +228,13 @@ func main() {
 
 	initializeMonascaClient(keystoneToken, monascaURL)
 
+	// Cleanup potential smoke test alarm definition and notification method from previous runs
+	cleanupPreviousRun()
+
 	fmt.Println("TEST MEASUREMENTS FLOWING")
 	testMeasurementsFlowing()
 	fmt.Println()
+	testsRun++
 
 	// Set Up Webhook server for notifications
 	webhookIP := os.Getenv("WEBHOOK_IP")
@@ -200,25 +248,30 @@ func main() {
 	fmt.Println("TEST NOTIFICATION CREATION")
 	notificationID := testCreateNotification(webhookAddress)
 	fmt.Println()
+	testsRun++
 
 	fmt.Println("TEST ALARM DEFINITION CREATION")
 	alarmDefinitionID := testCreateAlarmDefinition(notificationID)
 	fmt.Println()
+	testsRun++
 
 	fmt.Println("TEST METRIC CREATION")
 	testCreateMetric(1)
 	fmt.Println()
+	testsRun++
 
 	fmt.Println("TEST WEBHOOK TRIGGERED")
 	testWebhookTrigger()
 	fmt.Println()
+	testsRun++
 
 	fmt.Println("TEST CLEANUP")
 	cleanup(alarmDefinitionID, notificationID)
 	fmt.Println()
+	testsRun++
 
-	if testsSucceeded != totalTests {
-		fmt.Printf("Smoke Tests Failed. %d/%d passed\n", testsSucceeded, totalTests)
+	if testsSucceeded != testsRun {
+		fmt.Printf("Smoke Tests Failed. %d/%d passed\n", testsSucceeded, testsRun)
 		os.Exit(1)
 	} else {
 		fmt.Println("All smoke tests passed successfully!!!")
