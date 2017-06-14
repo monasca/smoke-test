@@ -1,0 +1,18 @@
+hash: 466ee4566b36b8de17e7f384c9d12b3297dfcc6adac140a5426d8a68483cd0ce
+updated: 2017-06-09T14:25:36.914207343-06:00
+imports:
+- name: github.com/gophercloud/gophercloud
+  version: 36954b3332102baa9d7edd7897a6cdbf5fcb03b8
+  subpackages:
+  - openstack
+  - openstack/identity/v2/tenants
+  - openstack/identity/v2/tokens
+  - openstack/identity/v3/tokens
+  - openstack/utils
+  - pagination
+- name: github.com/monasca/golang-monascaclient
+  version: 3934eef5b35172974b5eb5275bacf5bed27267a6
+  subpackages:
+  - monascaclient
+  - monascaclient/models
+testImports: []

@@ -1,0 +1,4 @@
+package: github.com/monasca/smoke-test
+import:
+- package: github.com/gophercloud/gophercloud
+- package: github.com/monasca/golang-monascaclient
