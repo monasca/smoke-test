@@ -29,6 +29,8 @@ import (
 
 var webhookTriggered bool = false
 var testsSucceeded int = 0
+var notificationName = "smoke_test_notification"
+var alarmDefinitionName = "smoke_test_alarm"
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "Received WEBHOOK")
@@ -85,9 +87,8 @@ func testMeasurementsFlowing() {
 }
 
 func testCreateNotification(webhookAddress string) string {
-	name := "smoke_test_notification"
 	notificationType := "webhook"
-	requestBody := models.NotificationRequestBody{Name: &name, Type: &notificationType, Address: &webhookAddress}
+	requestBody := models.NotificationRequestBody{Name: &notificationName, Type: &notificationType, Address: &webhookAddress}
 	notificationResponse, err := monascaclient.CreateNotificationMethod(&requestBody)
 	if err != nil {
 		fmt.Printf("FAILED - Error creating notification method %s\n", err.Error())
@@ -99,10 +100,9 @@ func testCreateNotification(webhookAddress string) string {
 }
 
 func testCreateAlarmDefinition(notificationID string) string {
-	name := "smoke_test_alarm"
 	expression := "smoke_test_metric>0"
 	alarmDefActions := []string{notificationID}
-	requestBody := models.AlarmDefinitionRequestBody{Name: &name, Expression: &expression, AlarmActions: &alarmDefActions, UndeterminedActions: &alarmDefActions, OkActions: &alarmDefActions}
+	requestBody := models.AlarmDefinitionRequestBody{Name: &alarmDefinitionName, Expression: &expression, AlarmActions: &alarmDefActions, UndeterminedActions: &alarmDefActions, OkActions: &alarmDefActions}
 	alarmDefinitionResponse, err := monascaclient.CreateAlarmDefinition(&requestBody)
 	if err != nil {
 		fmt.Printf("FAILED - Error creating alarm definition %s\n", err.Error())
@@ -161,7 +161,6 @@ func cleanup(alarmDefinitionID, notificationID string) {
 }
 
 func cleanupPreviousRun() {
-	notificationName := "smoke_test_notification"
 	// Get notification method
 	notificationMethods, err := monascaclient.GetNotificationMethods(&models.NotificationQuery{})
 	if err != nil {
@@ -181,7 +180,6 @@ func cleanupPreviousRun() {
 			}
 		}
 	}
-	alarmDefinitionName := "smoke_test_alarm"
 	alarmDefinitions, err := monascaclient.GetAlarmDefinitions(&models.AlarmDefinitionQuery{Name: &alarmDefinitionName})
 	if err != nil {
 		fmt.Printf("Error getting alarm definitions to delete potential left over alarm definition "+
@@ -264,6 +262,11 @@ func main() {
 	testWebhookTrigger()
 	fmt.Println()
 	testsRun++
+
+	if testsRun != testsSucceeded {
+		fmt.Printf("Smoke Tests Failed. %d/%d tests passed prior to cleanup. Skipping cleanup.\n", testsSucceeded, testsRun)
+		os.Exit(1)
+	}
 
 	fmt.Println("TEST CLEANUP")
 	cleanup(alarmDefinitionID, notificationID)
