@@ -66,9 +66,7 @@ func initializeMonascaClient(token, monascaURL string) {
 	monascaclient.SetHeaders(headers)
 }
 
-func testMeasurementsFlowing() {
-	//mergeMetrics := false
-	metricName := "pod.cpu.total_time_sec"
+func testMeasurementsFlowing(metricName string) {
 	startTime := time.Now()
 	startTime = startTime.Add(-3 * time.Minute)
 	groupBy := "*"
@@ -79,7 +77,7 @@ func testMeasurementsFlowing() {
 		return
 	}
 	if len(measurements.Elements) == 0 {
-		fmt.Println("FAILED - No current measurements found for pod.cpu.total_time_sec")
+		fmt.Printf("FAILED - No current measurements found for %s\n", metricName)
 		return
 	}
 	fmt.Println("SUCCESS")
@@ -212,6 +210,11 @@ func main() {
 
 	monascaURL := os.Getenv("MONASCA_URL")
 
+	metricName := os.Getenv("METRIC_NAME_TO_CHECK")
+	if metricName == "" {
+		metricName = "pod.cpu.total_time_sec"
+	}
+
 	if monascaURL == "" {
 		fmt.Println("Monasca URL environment variable must be set")
 		os.Exit(1)
@@ -230,7 +233,7 @@ func main() {
 	cleanupPreviousRun()
 
 	fmt.Println("TEST MEASUREMENTS FLOWING")
-	testMeasurementsFlowing()
+	testMeasurementsFlowing(metricName)
 	fmt.Println()
 	testsRun++
 
