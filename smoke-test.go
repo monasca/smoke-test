@@ -256,6 +256,8 @@ func main() {
 	fmt.Println()
 	testsRun++
 
+	time.Sleep(5 * time.Second)
+
 	fmt.Println("TEST METRIC CREATION")
 	testCreateMetric(1)
 	fmt.Println()
